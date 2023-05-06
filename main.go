@@ -95,6 +95,12 @@ const loopCount = 5
 
 func main() {
 	pid := os.Getpid()
+	fmt.Println()
+	fmt.Println("This program will convert all JPG and PNG pictures in the current directory into PDF.")
+	fmt.Println()
+  fmt.Printf("Go version: %s\n", runtime.Version())
+	fmt.Println()
+
 	fmt.Printf("Running with process ID: %d\n", pid)
 
 	// Wait for a key press
@@ -127,7 +133,7 @@ func main() {
 		}
 	}
 
-var stop = math.Round(float64(time.Since(start).Milliseconds()) / 10) / 100
+  var stop = math.Round(float64(time.Since(start).Milliseconds()) / 10) / 100
 
 	fmt.Printf("\nDone creating PDFs in %.1f seconds", stop)
 
