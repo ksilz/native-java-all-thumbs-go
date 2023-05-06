@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -90,6 +91,8 @@ func waitForEnter(message string) {
 	fmt.Scanln(&input)
 }
 
+const loopCount = 5
+
 func main() {
 	pid := os.Getpid()
 	fmt.Printf("Running with process ID: %d\n", pid)
@@ -97,6 +100,8 @@ func main() {
 	// Wait for a key press
 	waitForEnter("to START")
 	
+	var start = time.Now()
+
 	// Read all image files in the current directory
 	imageFiles, err := readImageFiles()
 	if err != nil {
@@ -109,8 +114,8 @@ func main() {
 		return
 	}
 
-	for pass := 1; pass <= 5; pass++ {
-		fmt.Printf("\nPass %d/5\n", pass)
+	for pass := 1; pass <= loopCount; pass++ {
+		fmt.Printf("\nPass %d/%d\n", pass, loopCount)
 
 		// Convert each image file to a one-page PDF
 		for i, file := range imageFiles {
@@ -121,6 +126,10 @@ func main() {
 			}
 		}
 	}
+
+var stop = math.Round(float64(time.Since(start).Milliseconds()) / 10) / 100
+
+	fmt.Printf("\nDone creating PDFs in %.1f seconds", stop)
 
 	fmt.Println()
 	waitForEnter("for garbage collection")
