@@ -3,11 +3,12 @@ package main
 import (
 	"fmt"
 	"image"
-	_ "github.com/chai2010/webp" // Import the package to support 16-bit depth PNG
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"time"
 
 	"github.com/jung-kurt/gofpdf/v2"
 )
@@ -76,22 +77,25 @@ func imageToPDF(file os.FileInfo) error {
 
 	// Save the PDF
 	err = pdf.OutputFileAndClose(pdfPath)
+
+	// Reduce memory usage
+	pdf = nil              // Set pdf to nil to release the memory
+
 	return err
 }
 
-func waitForEnter() {
-	fmt.Println("Press ENTER to continue...")
+func waitForEnter(message string) {
+	fmt.Printf("\nPress ENTER %s...", message)
 	var input string
 	fmt.Scanln(&input)
 }
 
 func main() {
-
 	pid := os.Getpid()
 	fmt.Printf("Running with process ID: %d\n", pid)
 
 	// Wait for a key press
-	waitForEnter()
+	waitForEnter("to START")
 	
 	// Read all image files in the current directory
 	imageFiles, err := readImageFiles()
@@ -105,23 +109,29 @@ func main() {
 		return
 	}
 
-	// Create the "pdf" sub-directory if it doesn't exist
-	if _, err := os.Stat("pdf"); os.IsNotExist(err) {
-		os.Mkdir("pdf", 0755)
-	}
+	for pass := 1; pass <= 5; pass++ {
+		fmt.Printf("\nPass %d/5\n", pass)
 
-	// Convert each image file to a one-page PDF
-	for i, file := range imageFiles {
-		fmt.Printf("Processing file %d: %s\n", i+1, file.Name())
-		err := imageToPDF(file)
-		if err != nil {
-			if strings.Contains(err.Error(), "16-bit depth not supported") {
-				fmt.Printf("Skipped %s: %v\n", file.Name(), err)
-			} else {
-				fmt.Printf("Error converting %s to PDF: %v\n", file.Name(), err)
+		// Convert each image file to a one-page PDF
+		for i, file := range imageFiles {
+			fmt.Printf("\r  File %d", i+1)
+			err := imageToPDF(file)
+			if err != nil {
+					fmt.Printf("Error converting %s to PDF: %v\n", file.Name(), err)
 			}
-		} else {
-			fmt.Printf("Successfully converted %s to PDF\n", file.Name())
 		}
 	}
+
+	fmt.Println()
+	waitForEnter("for garbage collection")
+	
+	fmt.Println("\nNow sleeping for 10 seconds, hoping for garbage collection.")
+	
+	runtime.GC()           // Force garbage collection
+	runtime.Gosched()
+  time.Sleep(10 * time.Second)
+	
+	fmt.Println("\nWoke up from sleep.")
+	waitForEnter("to STOP")
+	fmt.Println()
 }
