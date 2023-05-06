@@ -50,16 +50,18 @@ func imageToPDF(file os.FileInfo) error {
 	pdf.AddPage()
 
 	// Register the image
-	imgOptions := gofpdf.ImageOptions{ImageType: strings.TrimPrefix(filepath.Ext(imgPath), ".")}
+	imgOptions := gofpdf.ImageOptions{ImageType: strings.TrimPrefix(filepath.Ext(imgPath), "."), ReadDpi: true, AllowNegativePosition: false}
 
 	// Read the image file using an io.Reader
 	imgFile, err := os.Open(imgPath)
 	if err != nil {
 		return err
 	}
-	defer imgFile.Close()
 
 	img, _, err := image.DecodeConfig(imgFile)
+  imgFile.Close()
+	imgFile = nil
+
 	if err != nil {
 		return err
 	}
