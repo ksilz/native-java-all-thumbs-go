@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"image"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -15,18 +14,18 @@ import (
 )
 
 // Read image files from the current directory
-func readImageFiles() ([]os.FileInfo, error) {
-	files, err := ioutil.ReadDir(".")
+func readImageFiles() ([]os.DirEntry, error) {
+	entries, err := os.ReadDir(".")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading directory: %w", err)
 	}
 
-	imageFiles := []os.FileInfo{}
-	for _, file := range files {
-		if !file.IsDir() {
-			ext := strings.ToLower(filepath.Ext(file.Name()))
+	imageFiles := []os.DirEntry{}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			ext := strings.ToLower(filepath.Ext(entry.Name()))
 			if ext == ".jpg" || ext == ".jpeg" || ext == ".png" {
-				imageFiles = append(imageFiles, file)
+				imageFiles = append(imageFiles, entry)
 			}
 		}
 	}
@@ -35,35 +34,37 @@ func readImageFiles() ([]os.FileInfo, error) {
 }
 
 // Convert image to a one-page PDF
-func imageToPDF(file os.FileInfo) error {
-	imgPath := file.Name()
-	pdfPath := "pdf/" + strings.TrimSuffix(imgPath, filepath.Ext(imgPath)) + ".pdf"
+func imageToPDF(entry os.DirEntry) error {
+	imgPath := entry.Name()
+	pdfPath := filepath.Join("pdf", strings.TrimSuffix(imgPath, filepath.Ext(imgPath))+".pdf")
 
 	// Create a new PDF document
 	pdf := gofpdf.New("P", "mm", "A4", "")
 
 	// Set PDF metadata
-	pdf.SetTitle("Converted image: " + imgPath, true)
+	pdf.SetTitle("Converted image: "+imgPath, true)
 	pdf.SetAuthor("Image to PDF Converter", true)
 
 	// Add a new page
 	pdf.AddPage()
 
 	// Register the image
-	imgOptions := gofpdf.ImageOptions{ImageType: strings.TrimPrefix(filepath.Ext(imgPath), "."), ReadDpi: true, AllowNegativePosition: false}
-
-	// Read the image file using an io.Reader
-	imgFile, err := os.Open(imgPath)
-	if err != nil {
-		return err
+	imgOptions := gofpdf.ImageOptions{
+		ImageType:            strings.TrimPrefix(filepath.Ext(imgPath), "."),
+		ReadDpi:             true,
+		AllowNegativePosition: false,
 	}
 
-	img, _, err := image.DecodeConfig(imgFile)
-  imgFile.Close()
-	imgFile = nil
-
+	// Read the image file
+	imgFile, err := os.Open(imgPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("error opening image file: %w", err)
+	}
+	defer imgFile.Close()
+
+	img, _, err := image.DecodeConfig(imgFile)
+	if err != nil {
+		return fmt.Errorf("error decoding image: %w", err)
 	}
 
 	// Calculate the scaling and positioning for the image in the PDF
@@ -79,12 +80,11 @@ func imageToPDF(file os.FileInfo) error {
 	pdf.ImageOptions(imgPath, x, y, width, height, false, imgOptions, 0, "")
 
 	// Save the PDF
-	err = pdf.OutputFileAndClose(pdfPath)
+	if err := pdf.OutputFileAndClose(pdfPath); err != nil {
+		return fmt.Errorf("error saving PDF: %w", err)
+	}
 
-	// Reduce memory usage
-	pdf = nil              // Set pdf to nil to release the memory
-
-	return err
+	return nil
 }
 
 func waitForEnter(message string) {
@@ -100,7 +100,7 @@ func main() {
 	fmt.Println()
 	fmt.Println("This program will convert all JPG and PNG pictures in the current directory into PDF.")
 	fmt.Println()
-  fmt.Printf("Go version: %s\n", runtime.Version())
+	fmt.Printf("Go version: %s\n", runtime.Version())
 	fmt.Println()
 
 	fmt.Printf("Running with process ID: %d\n", pid)
@@ -108,12 +108,12 @@ func main() {
 	// Wait for a key press
 	waitForEnter("to START")
 	
-	var start = time.Now()
+	start := time.Now()
 
 	// Read all image files in the current directory
 	imageFiles, err := readImageFiles()
 	if err != nil {
-		fmt.Println("Error reading image files:", err)
+		fmt.Printf("Error reading image files: %v\n", err)
 		return
 	}
 
@@ -128,14 +128,13 @@ func main() {
 		// Convert each image file to a one-page PDF
 		for i, file := range imageFiles {
 			fmt.Printf("\r  File %d", i+1)
-			err := imageToPDF(file)
-			if err != nil {
-					fmt.Printf("Error converting %s to PDF: %v\n", file.Name(), err)
+			if err := imageToPDF(file); err != nil {
+				fmt.Printf("\nError converting %s to PDF: %v\n", file.Name(), err)
 			}
 		}
 	}
 
-  var stop = math.Round(float64(time.Since(start).Milliseconds()) / 10) / 100
+	stop := math.Round(float64(time.Since(start).Milliseconds()) / 10) / 100
 
 	fmt.Printf("\nDone creating PDFs in %.1f seconds", stop)
 
@@ -146,7 +145,7 @@ func main() {
 	
 	runtime.GC()           // Force garbage collection
 	runtime.Gosched()
-  time.Sleep(10 * time.Second)
+	time.Sleep(10 * time.Second)
 	
 	fmt.Println("\nWoke up from sleep.")
 	waitForEnter("to STOP")
