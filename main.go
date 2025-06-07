@@ -70,11 +70,11 @@ func imageToPDF(entry os.DirEntry) error {
 	// Calculate the scaling and positioning for the image in the PDF
 	ratio := float64(img.Width) / float64(img.Height)
 	margin := 10.0
-	width, height := pdf.GetPageSize()
-	width -= 2 * margin
-	height = width / ratio
+	pageWidth, pageHeight := pdf.GetPageSize()
+	width := pageWidth - 2*margin
+	height := width / ratio
 	x := margin
-	y := (height - height) / 2
+	y := (pageHeight - height) / 2
 
 	// Place the image on the PDF
 	pdf.ImageOptions(imgPath, x, y, width, height, false, imgOptions, 0, "")
