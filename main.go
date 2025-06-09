@@ -87,12 +87,6 @@ func imageToPDF(entry os.DirEntry) error {
 	return nil
 }
 
-func waitForEnter(message string) {
-	fmt.Printf("\nPress ENTER %s...", message)
-	var input string
-	fmt.Scanln(&input)
-}
-
 const loopCount = 5
 
 func main() {
@@ -105,11 +99,7 @@ func main() {
 
 	fmt.Printf("Running with process ID: %d\n", pid)
 
-	// Wait for a key press
-	waitForEnter("to START")
 	
-	start := time.Now()
-
 	// Read all image files in the current directory
 	imageFiles, err := readImageFiles()
 	if err != nil {
@@ -121,6 +111,8 @@ func main() {
 		fmt.Println("No image files found")
 		return
 	}
+
+	start := time.Now()
 
 	for pass := 1; pass <= loopCount; pass++ {
 		fmt.Printf("\nPass %d/%d\n", pass, loopCount)
@@ -137,17 +129,5 @@ func main() {
 	stop := math.Round(float64(time.Since(start).Milliseconds()) / 10) / 100
 
 	fmt.Printf("\nDone creating PDFs in %.1f seconds", stop)
-
-	fmt.Println()
-	waitForEnter("for garbage collection")
-	
-	fmt.Println("\nNow sleeping for 10 seconds, hoping for garbage collection.")
-	
-	runtime.GC()           // Force garbage collection
-	runtime.Gosched()
-	time.Sleep(10 * time.Second)
-	
-	fmt.Println("\nWoke up from sleep.")
-	waitForEnter("to STOP")
 	fmt.Println()
 }
